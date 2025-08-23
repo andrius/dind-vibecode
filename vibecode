@@ -174,11 +174,21 @@ fi
 
 # Function to build image if needed
 ensure_image_exists() {
-    if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
-        echo "Building vibecode image..."
+    # Get host user's UID and GID
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    
+    # Create image tag with UID/GID to handle different users
+    IMAGE_TAG="${IMAGE_NAME}:${HOST_UID}-${HOST_GID}"
+    
+    if ! docker image inspect "$IMAGE_TAG" &>/dev/null; then
+        echo "Building vibecode image for user ${HOST_UID}:${HOST_GID}..."
         cd "$SCRIPT_DIR"
-        docker build -t "$IMAGE_NAME" .
+        docker build --build-arg USER_UID="$HOST_UID" --build-arg USER_GID="$HOST_GID" -t "$IMAGE_TAG" .
     fi
+    
+    # Update IMAGE_NAME to use the tagged version
+    IMAGE_NAME="$IMAGE_TAG"
 }
 
 # Build image if needed
@@ -199,16 +209,18 @@ copy_claude_config() {
     # Copy Claude directory config if it exists
     if [[ -d "$HOME/.claude" ]]; then
         echo "Copying Claude directory config..."
-        docker exec "$container_name" mkdir -p /root/.claude
-        docker cp "$HOME/.claude/." "$container_name:/root/.claude/"
-        docker exec "$container_name" chmod -R 755 /root/.claude
+        docker exec "$container_name" mkdir -p /home/developer/.claude
+        docker cp "$HOME/.claude/." "$container_name:/home/developer/.claude/"
+        docker exec "$container_name" chown -R developer:developer /home/developer/.claude
+        docker exec "$container_name" chmod -R 755 /home/developer/.claude
     fi
     
     # Copy Claude JSON config if it exists
     if [[ -f "$HOME/.claude.json" ]]; then
         echo "Copying Claude JSON config..."
-        docker cp "$HOME/.claude.json" "$container_name:/root/.claude.json"
-        docker exec "$container_name" chmod 644 /root/.claude.json
+        docker cp "$HOME/.claude.json" "$container_name:/home/developer/.claude.json"
+        docker exec "$container_name" chown developer:developer /home/developer/.claude.json
+        docker exec "$container_name" chmod 644 /home/developer/.claude.json
     fi
     
     echo "Claude configuration copied successfully"

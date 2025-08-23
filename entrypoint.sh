@@ -39,10 +39,21 @@ fi
 
 echo "Container starting..."
 
-# If arguments provided, execute them
+# Fix ownership of workspace if needed
+if [ -d /workspace ]; then
+    chown -R developer:developer /workspace
+fi
+
+# If arguments provided, execute them as developer user
 if [ $# -gt 0 ]; then
     echo "Executing command: $*"
-    exec "$@"
+    if [ "$1" = "bash" ] && [ $# -eq 1 ]; then
+        # Interactive bash - switch to developer user with proper home
+        exec su - developer -c "cd /workspace && bash"
+    else
+        # Other commands - execute as developer user in workspace
+        exec su - developer -c "cd /workspace && $(printf '%q ' "$@")"
+    fi
 else
     # No arguments, keep container running
     echo "Container ready. Keeping alive..."

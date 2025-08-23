@@ -1,5 +1,9 @@
 FROM python:3.13-slim-trixie
 
+# Accept build arguments for user UID/GID
+ARG USER_UID=1000
+ARG USER_GID=1000
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
@@ -7,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     unzip \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker
@@ -20,13 +25,25 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Configure npm for global packages (avoid permission issues)
-RUN mkdir -p /root/.npm-global && \
-    npm config set prefix '/root/.npm-global'
-ENV PATH="/root/.npm-global/bin:$PATH"
+# Create developer user and group with specified UID/GID
+RUN groupadd -g $USER_GID developer && \
+    useradd -u $USER_UID -g $USER_GID -m -s /bin/bash developer && \
+    usermod -aG sudo developer && \
+    usermod -aG docker developer && \
+    echo "developer ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Configure npm for global packages as root first
+RUN mkdir -p /opt/npm-global && \
+    npm config set prefix '/opt/npm-global' && \
+    chmod -R 755 /opt/npm-global
+ENV PATH="/opt/npm-global/bin:$PATH"
 
 # Install Claude Code via npm (correct package name)
 RUN npm install -g @anthropic-ai/claude-code
+
+# Set up npm directory for developer user
+RUN mkdir -p /home/developer/.npm-global && \
+    chown -R developer:developer /home/developer/.npm-global
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
