@@ -25,35 +25,63 @@ The container provides a complete development environment where Claude Code can 
 - **Flexible Volume Mounting**: Mount any host directory into containers
 - **Session Management**: Persistent named sessions or temporary auto-cleanup containers
 
-## Quick Start
+## Installation
+
+### One-Line Install (Recommended)
+
+Install vibecode globally with a single command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/andrius/dind-vibecode/main/install.sh | bash
+```
+
+This will:
+- Install vibecode to `~/.local/bin/vibecode` 
+- Download the project to `~/.cache/vibecode/`
+- Verify Docker is available and accessible
+- Test the installation
+
+After installation, you can use `vibecode` from anywhere (add `~/.local/bin` to your PATH if needed).
+
+### Manual Installation
+
+Alternatively, clone and use locally:
+
+```bash
+git clone https://github.com/andrius/dind-vibecode.git
+cd dind-vibecode
+./vibecode --help
+```
 
 ### Prerequisites
 - Docker installed on host
 - Claude Code authentication configured in `~/.claude` or `~/.claude.json`
 
-### Usage with Vibecode Wrapper
+## Quick Start
+
+### Usage Examples
 
 ```bash
 # Run Claude Code (current directory mounted automatically)
-./vibecode claude "what is this project about"
+vibecode claude "what is this project about"
 
 # Check Claude version
-./vibecode claude --version
+vibecode claude --version
 
 # Interactive shell
-./vibecode bash
+vibecode bash
 
 # Mount real project directory
-./vibecode --volume /home/ak/code/some/backend:/workspace claude analyze
+vibecode --volume /home/ak/code/some/backend:/workspace claude analyze
 
 # Use persistent named session for a project
-./vibecode --session myproject claude "analyze this project"
+vibecode --session myproject claude "analyze this project"
 
 # Continue working in the same session later
-./vibecode --session myproject claude "implement the suggested changes"
+vibecode --session myproject claude "implement the suggested changes"
 
 # List running sessions
-./vibecode --list
+vibecode --list
 ```
 
 ## YOLO Mode Setup & Usage
@@ -63,23 +91,23 @@ For safe AI-assisted development without confirmations, you can run Claude Code 
 ### One-time Setup
 First, acknowledge the permissions (one-time setup per container):
 ```bash
-./vibecode claude --dangerously-skip-permissions
+vibecode claude --dangerously-skip-permissions
 # Select "yes" when prompted, then exit
 ```
 
 ### YOLO Mode Examples
 ```bash
 # Basic YOLO mode - let AI make changes without confirmations
-./vibecode claude --print "refactor this entire codebase" --dangerously-skip-permissions --verbose
+vibecode claude --print "refactor this entire codebase" --dangerously-skip-permissions --verbose
 
 # YOLO mode with specific project
-./vibecode --volume /home/ak/code/some/backend:/workspace claude --print "fix all bugs and optimize performance" --dangerously-skip-permissions
+vibecode --volume /home/ak/code/some/backend:/workspace claude --print "fix all bugs and optimize performance" --dangerously-skip-permissions
 
 # Continuous YOLO session with JSON output
-./vibecode claude --continue --print "implement new features" --dangerously-skip-permissions --verbose --output-format stream-json | jq
+vibecode claude --continue --print "implement new features" --dangerously-skip-permissions --verbose --output-format stream-json | jq
 
 # YOLO mode in persistent session
-./vibecode --session danger-zone claude --print "completely restructure this project" --dangerously-skip-permissions
+vibecode --session danger-zone claude --print "completely restructure this project" --dangerously-skip-permissions
 ```
 
 ### Why YOLO Mode in Containers?
@@ -93,14 +121,14 @@ First, acknowledge the permissions (one-time setup per container):
 The `vibecode` script provides an easy interface to run containerized development environments:
 
 **Basic Usage:**
-- `./vibecode claude "your question"` - Quick Claude Code execution
-- `./vibecode bash` - Interactive shell with full toolset
-- `./vibecode --help` - Show all available options
+- `vibecode claude "your question"` - Quick Claude Code execution
+- `vibecode bash` - Interactive shell with full toolset
+- `vibecode --help` - Show all available options
 
 **Session Management:**
 - Each `vibecode` command creates a persistent container by default
-- `./vibecode --session name` - Create/reuse a named session for a specific project
-- `./vibecode --list` - List all running sessions
+- `vibecode --session name` - Create/reuse a named session for a specific project
+- `vibecode --list` - List all running sessions
 - Sessions persist until manually removed - great for ongoing work
 
 **Volume Mounting:**
@@ -114,7 +142,7 @@ Since containers are persistent, you'll want to clean them up occasionally:
 
 ```bash
 # List all running vibecode sessions
-./vibecode --list
+vibecode --list
 
 # Remove a specific session
 docker rm -f session-name
