@@ -150,8 +150,10 @@ if [[ -z "$SESSION_NAME" ]]; then
 fi
 
 # Default to current directory if no volumes specified
+# Use ORIGINAL_PWD if set by wrapper script, otherwise use current pwd
+CURRENT_DIR="${ORIGINAL_PWD:-$(pwd)}"
 if [[ ${#VOLUMES[@]} -eq 0 ]]; then
-    VOLUMES=("$(pwd):$(pwd)")
+    VOLUMES=("$CURRENT_DIR:$CURRENT_DIR")
 fi
 
 # Validate volume format and convert relative paths to absolute
@@ -223,7 +225,7 @@ DOCKER_CMD=(
     --privileged
     --label "vibecode-session"
     "${DOCKER_VOLUMES[@]}"
-    --workdir "$(pwd)"
+    --workdir "$CURRENT_DIR"
 )
 
 # Add session handling
@@ -244,7 +246,7 @@ if [[ "$PERSISTENT" == true ]]; then
         
         # Start container in background
         docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-            --workdir "$(pwd)" --name "$SESSION_NAME" -d "$IMAGE_NAME" > /dev/null
+            --workdir "$CURRENT_DIR" --name "$SESSION_NAME" -d "$IMAGE_NAME" > /dev/null
         
         # Wait for container to be ready
         echo "Waiting for container to be ready..."
@@ -279,7 +281,7 @@ else
     echo "Starting temporary container..."
     # Start container in background
     docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-        --workdir "$(pwd)" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" > /dev/null
+        --workdir "$CURRENT_DIR" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" > /dev/null
     
     # Wait for container to be ready
     echo "Waiting for container to be ready..."

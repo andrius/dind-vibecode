@@ -71,7 +71,34 @@ check_prerequisites() {
     print_success "Prerequisites check passed"
 }
 
-# Clean up existing installation
+# Check if installation exists and handle updates
+check_existing_installation() {
+    if [[ -d "$CACHE_DIR" ]]; then
+        print_info "Existing installation found at $CACHE_DIR"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Update existing installation
+update_existing() {
+    print_info "Updating existing installation..."
+    cd "$CACHE_DIR"
+    
+    # Pull latest changes
+    print_info "Pulling latest changes from repository"
+    git pull origin main
+    
+    # Force rebuild containers by removing any cached images
+    print_info "Cleaning up old container images to force rebuild"
+    docker image prune -f --filter="label=vibecode" >/dev/null 2>&1 || true
+    docker rmi vibecode-dev >/dev/null 2>&1 || true
+    
+    print_success "Installation updated successfully"
+}
+
+# Clean up existing installation (for fresh installs)
 cleanup_existing() {
     if [[ -d "$CACHE_DIR" ]]; then
         print_info "Removing existing installation at $CACHE_DIR"
@@ -92,7 +119,7 @@ create_directories() {
     print_success "Directories created"
 }
 
-# Clone repository
+# Clone repository (for fresh installs)
 clone_repository() {
     print_info "Cloning repository from $REPO_URL"
     cd "$HOME/.cache"
@@ -128,10 +155,14 @@ if [[ ! -f "$VIBECODE_SCRIPT" ]]; then
     exit 1
 fi
 
+# Store the original working directory before changing context
+ORIGINAL_PWD="$(pwd)"
+
 # Change to the cache directory so Docker build context is correct
 cd "$CACHE_DIR"
 
-# Execute the real vibecode script with all arguments
+# Execute the real vibecode script with all arguments, preserving original working directory
+export ORIGINAL_PWD
 exec "$VIBECODE_SCRIPT" "$@"
 EOF
 
@@ -194,12 +225,23 @@ main() {
     echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo
     
-    # Run installation steps
+    # Check prerequisites first
     check_prerequisites
-    cleanup_existing
-    create_directories
-    clone_repository
-    create_wrapper_binary
+    
+    # Check if this is an update or fresh install
+    if check_existing_installation; then
+        print_info "Existing installation detected - performing update"
+        update_existing
+        # Still need to recreate the wrapper binary in case it changed
+        mkdir -p "$BIN_DIR"
+        create_wrapper_binary
+    else
+        print_info "No existing installation found - performing fresh install"
+        cleanup_existing
+        create_directories
+        clone_repository
+        create_wrapper_binary
+    fi
     
     # Check PATH and test
     path_ok=true
