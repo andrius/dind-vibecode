@@ -1,0 +1,17 @@
+# Environment files
+.env
+.env.*
+
+# Claude configuration (may contain auth tokens)
+.claude/
+.claude.json
+
+# Docker overrides
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+.DS_Store

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  dind-claude:
+    build: .
+    privileged: true
+    volumes:
+      - ~/.claude:/root/.claude
+      - ~/.claude.json:/root/.claude.json
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_DRIVER=overlay2
+    networks:
+      - dind-network
+    stdin_open: true
+    tty: true
+
+networks:
+  dind-network:
+    driver: bridge
