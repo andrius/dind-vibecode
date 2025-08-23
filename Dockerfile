@@ -48,9 +48,6 @@ RUN echo 'export PATH="/opt/npm-global/bin:$PATH"' >> /home/developer/.bashrc
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Create working directory
-WORKDIR /workspace
-
 # Switch to developer user for all operations
 USER developer
 

@@ -42,11 +42,11 @@ EXAMPLES:
     # Interactive shell in container
     vibecode bash
     
-    # Mount real project directory
-    vibecode --volume /home/ak/code/some/backend:/workspace claude analyze
+    # Mount real project directory (preserving full path)
+    vibecode --volume /home/ak/code/some/backend:/home/ak/code/some/backend claude analyze
     
     # Multiple volume mounts
-    vibecode --volume .:/workspace --volume ~/data:/data claude "analyze both directories"
+    vibecode --volume .:/current/project --volume ~/data:/home/user/data claude "analyze both directories"
     
     # Use persistent named session
     vibecode --session myproject claude "analyze this project"
@@ -62,13 +62,13 @@ YOLO MODE (AI without confirmations - safe in containers):
     vibecode claude --print "refactor this codebase" --dangerously-skip-permissions --verbose
     
     # YOLO with real project mounting
-    vibecode --volume /home/ak/code/some/backend:/workspace claude --print "fix all bugs" --dangerously-skip-permissions
+    vibecode --volume /home/ak/code/some/backend:/home/ak/code/some/backend claude --print "fix all bugs" --dangerously-skip-permissions
     
     # YOLO in persistent session
     vibecode --session danger-zone claude --print "restructure project" --dangerously-skip-permissions
 
 NOTES:
-    - Current directory is automatically mounted to /workspace if no --volume specified
+    - Current directory is automatically mounted to its same path if no --volume specified
     - Each invocation creates a new container (unless --session is used)
     - Parallel sessions are supported - run multiple vibecode commands simultaneously
     - Claude Code authentication is inherited from host ~/.claude configuration
@@ -151,7 +151,7 @@ fi
 
 # Default to current directory if no volumes specified
 if [[ ${#VOLUMES[@]} -eq 0 ]]; then
-    VOLUMES=(".:/workspace")
+    VOLUMES=("$(pwd):$(pwd)")
 fi
 
 # Validate volume format and convert relative paths to absolute
@@ -223,7 +223,7 @@ DOCKER_CMD=(
     --privileged
     --label "vibecode-session"
     "${DOCKER_VOLUMES[@]}"
-    --workdir /workspace
+    --workdir "$(pwd)"
 )
 
 # Add session handling
@@ -244,7 +244,7 @@ if [[ "$PERSISTENT" == true ]]; then
         
         # Start container in background
         docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-            --workdir /workspace --name "$SESSION_NAME" -d "$IMAGE_NAME" > /dev/null
+            --workdir "$(pwd)" --name "$SESSION_NAME" -d "$IMAGE_NAME" > /dev/null
         
         # Wait for container to be ready
         echo "Waiting for container to be ready..."
@@ -279,7 +279,7 @@ else
     echo "Starting temporary container..."
     # Start container in background
     docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-        --workdir /workspace --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" > /dev/null
+        --workdir "$(pwd)" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" > /dev/null
     
     # Wait for container to be ready
     echo "Waiting for container to be ready..."
