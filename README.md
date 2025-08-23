@@ -1,42 +1,139 @@
 # Docker-in-Docker Claude Development Environment
 
-A containerized development environment that provides Docker-in-Docker capabilities with Claude Code and multiple development tools pre-installed.
+A containerized development environment with a convenient wrapper script that provides Docker-in-Docker capabilities, Claude Code, and multiple development tools. Supports parallel sessions and flexible volume mounting.
+
+## Purpose & Motivation
+
+This project was built to enable **safe AI-assisted development** in isolated environments. The key motivation is running AI coding tools like Claude Code in **YOLO mode** (no confirmations) without risking damage to your host system.
+
+**Why containerized AI development?**
+- 🛡️ **Safety First**: Run destructive AI operations in isolation
+- 🚀 **YOLO Mode**: Let AI make changes without confirmations, safely
+- 🔒 **Host Protection**: Your main system remains untouched
+- 🧪 **Experimentation**: Try radical refactoring and changes risk-free
+- ⚡ **Parallel Work**: Multiple isolated AI sessions simultaneously
+
+The container provides a complete development environment where Claude Code can freely modify, refactor, or even break code without affecting your host machine. Perfect for letting AI loose on your codebase with confidence.
 
 ## Features
 
+- **Vibecode Wrapper**: Simple command-line interface for container management
+- **Parallel Sessions**: Run multiple isolated development environments simultaneously
 - **Docker-in-Docker**: Full Docker CE with compose plugin for nested containerization
 - **Claude Code**: Pre-installed and configured for AI-assisted development
 - **Multi-language Support**: Python 3.13 and Node.js 22
-- **Isolated Environment**: Secure containerized workspace with volume mounting
+- **Flexible Volume Mounting**: Mount any host directory into containers
+- **Session Management**: Persistent named sessions or temporary auto-cleanup containers
 
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose installed on host
+- Docker installed on host
 - Claude Code authentication configured in `~/.claude` or `~/.claude.json`
 
-### Usage
+### Usage with Vibecode Wrapper
 
 ```bash
-# Build and start the service
-docker-compose up -d
+# Run Claude Code (current directory mounted automatically)
+./vibecode claude "what is this project about"
 
-# Access the container
-docker exec -it $(docker-compose ps -q dind-claude) bash
+# Check Claude version
+./vibecode claude --version
 
-# Verify tools are working
-docker exec $(docker-compose ps -q dind-claude) sh -c "claude --version && python --version && docker --version"
+# Interactive shell
+./vibecode bash
 
-# Stop the service
-docker-compose down
+# Mount real project directory
+./vibecode --volume /home/ak/code/some/backend:/workspace claude analyze
+
+# Use persistent named session for a project
+./vibecode --session myproject claude "analyze this project"
+
+# Continue working in the same session later
+./vibecode --session myproject claude "implement the suggested changes"
+
+# List running sessions
+./vibecode --list
 ```
+
+## YOLO Mode Setup & Usage
+
+For safe AI-assisted development without confirmations, you can run Claude Code in YOLO mode within the isolated container:
+
+### One-time Setup
+First, acknowledge the permissions (one-time setup per container):
+```bash
+./vibecode claude --dangerously-skip-permissions
+# Select "yes" when prompted, then exit
+```
+
+### YOLO Mode Examples
+```bash
+# Basic YOLO mode - let AI make changes without confirmations
+./vibecode claude --print "refactor this entire codebase" --dangerously-skip-permissions --verbose
+
+# YOLO mode with specific project
+./vibecode --volume /home/ak/code/some/backend:/workspace claude --print "fix all bugs and optimize performance" --dangerously-skip-permissions
+
+# Continuous YOLO session with JSON output
+./vibecode claude --continue --print "implement new features" --dangerously-skip-permissions --verbose --output-format stream-json | jq
+
+# YOLO mode in persistent session
+./vibecode --session danger-zone claude --print "completely restructure this project" --dangerously-skip-permissions
+```
+
+### Why YOLO Mode in Containers?
+- **Complete Safety**: AI can destroy, refactor, or break code without affecting your host
+- **Fearless Experimentation**: Try radical changes you'd never risk on your main codebase
+- **Rapid Iteration**: No confirmations needed - let AI work at full speed
+- **Easy Recovery**: Simply restart the container if things go wrong
+
+## Vibecode Wrapper
+
+The `vibecode` script provides an easy interface to run containerized development environments:
+
+**Basic Usage:**
+- `./vibecode claude "your question"` - Quick Claude Code execution
+- `./vibecode bash` - Interactive shell with full toolset
+- `./vibecode --help` - Show all available options
+
+**Session Management:**
+- Each `vibecode` command creates a persistent container by default
+- `./vibecode --session name` - Create/reuse a named session for a specific project
+- `./vibecode --list` - List all running sessions
+- Sessions persist until manually removed - great for ongoing work
+
+**Volume Mounting:**
+- Current directory mounted to `/workspace` by default
+- `--volume src:dest` for custom mounts
+- Multiple volumes supported
+
+## Session Cleanup
+
+Since containers are persistent, you'll want to clean them up occasionally:
+
+```bash
+# List all running vibecode sessions
+./vibecode --list
+
+# Remove a specific session
+docker rm -f session-name
+
+# Remove all vibecode sessions (clean slate)
+docker rm -f $(docker ps -aq --filter "label=vibecode-session")
+```
+
+**When to clean up:**
+- When you're done with a project
+- Running low on disk space
+- Too many containers running
 
 ## Architecture
 
-- **Base**: Python 3.13 on Debian Trixie
-- **Working Directory**: `/workspace` (mounted from current directory)
-- **Networking**: Isolated bridge network
-- **Volumes**: Claude config inheritance and Docker socket sharing
+- **Base**: Python 3.13 on Debian Trixie with Docker-in-Docker support
+- **Containers**: Each session runs in its own isolated container
+- **Working Directory**: `/workspace` (mount your project directories here)
+- **Authentication**: Claude Code config automatically copied from host
 
 ## Available Tools
 

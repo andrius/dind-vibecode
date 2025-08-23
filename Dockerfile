@@ -28,8 +28,12 @@ ENV PATH="/root/.npm-global/bin:$PATH"
 # Install Claude Code via npm (correct package name)
 RUN npm install -g @anthropic-ai/claude-code
 
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 # Create working directory
 WORKDIR /workspace
 
-# Start Docker daemon and keep container running
-CMD ["sh", "-c", "dockerd-entrypoint.sh & sleep infinity"]
+# Use custom entrypoint
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
