@@ -169,6 +169,23 @@ docker rm -f $(docker ps -aq --filter "label=vibecode-session")
 - Python 3.13.7
 - Docker 28.3.3+ with Compose
 - Node.js 22.18.0 LTS
+- **Passwordless Sudo**: Install additional packages without prompts
+
+### Package Installation
+
+The container's `developer` user has full sudo access without password prompts, enabling installation of additional tools:
+
+```bash
+# Install system packages
+vibecode bash
+sudo apt-get update && sudo apt-get install -y vim git build-essential
+
+# Install Python packages globally
+sudo pip install numpy pandas matplotlib
+
+# Install Node.js packages globally  
+sudo npm install -g typescript @angular/cli
+```
 
 ## Security Notes
 
