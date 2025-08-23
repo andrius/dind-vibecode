@@ -131,6 +131,19 @@ if [[ "$LIST_SESSIONS" == true ]]; then
     exit 0
 fi
 
+# Function to add Claude config volumes to Docker command
+add_claude_config_volumes() {
+    # Add Claude directory config if it exists
+    if [[ -d "$HOME/.claude" ]]; then
+        DOCKER_VOLUMES+=("-v" "$HOME/.claude:/home/developer/.claude")
+    fi
+    
+    # Add Claude JSON config if it exists
+    if [[ -f "$HOME/.claude.json" ]]; then
+        DOCKER_VOLUMES+=("-v" "$HOME/.claude.json:/home/developer/.claude.json")
+    fi
+}
+
 # Set session name
 if [[ -z "$SESSION_NAME" ]]; then
     SESSION_NAME="$DEFAULT_SESSION_NAME"
@@ -143,6 +156,9 @@ fi
 
 # Validate volume format and convert relative paths to absolute
 DOCKER_VOLUMES=()
+
+# Add Claude config volumes
+add_claude_config_volumes
 for volume in "${VOLUMES[@]}"; do
     if [[ ! "$volume" =~ ^[^:]+:[^:]+$ ]]; then
         echo "Error: Invalid volume format '$volume'. Use SRC:DEST format." >&2
@@ -201,32 +217,7 @@ if [[ ${#CLAUDE_ARGS[@]} -eq 0 ]]; then
     CLAUDE_ARGS=("bash")
 fi
 
-# Function to copy Claude config to container
-copy_claude_config() {
-    local container_name=$1
-    echo "Copying Claude configuration to container..."
-    
-    # Copy Claude directory config if it exists
-    if [[ -d "$HOME/.claude" ]]; then
-        echo "Copying Claude directory config..."
-        docker exec "$container_name" mkdir -p /home/developer/.claude
-        docker cp "$HOME/.claude/." "$container_name:/home/developer/.claude/"
-        docker exec "$container_name" chown -R developer:developer /home/developer/.claude
-        docker exec "$container_name" chmod -R 755 /home/developer/.claude
-    fi
-    
-    # Copy Claude JSON config if it exists
-    if [[ -f "$HOME/.claude.json" ]]; then
-        echo "Copying Claude JSON config..."
-        docker cp "$HOME/.claude.json" "$container_name:/home/developer/.claude.json"
-        docker exec "$container_name" chown developer:developer /home/developer/.claude.json
-        docker exec "$container_name" chmod 644 /home/developer/.claude.json
-    fi
-    
-    echo "Claude configuration copied successfully"
-}
-
-# Prepare Docker run command (no more config mounts needed)
+# Prepare Docker run command
 DOCKER_CMD=(
     docker run
     --privileged
@@ -242,10 +233,10 @@ if [[ "$PERSISTENT" == true ]]; then
         echo "Using existing session: $SESSION_NAME"
         if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
             # Interactive shell in existing container
-            docker exec -it "$SESSION_NAME" bash
+            docker exec -it --user developer "$SESSION_NAME" bash
         else
             # Execute command in existing container
-            docker exec "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
+            docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
         fi
         exit 0
     else
@@ -273,14 +264,11 @@ if [[ "$PERSISTENT" == true ]]; then
             exit 1
         fi
         
-        # Copy Claude configuration
-        copy_claude_config "$SESSION_NAME"
-        
         # Execute command in the new persistent container
         if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
-            docker exec -it "$SESSION_NAME" bash
+            docker exec -it --user developer "$SESSION_NAME" bash
         else
-            docker exec "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
+            docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
         fi
         exit 0
     fi
@@ -310,18 +298,15 @@ else
         exit 1
     fi
     
-    # Copy Claude configuration
-    copy_claude_config "$TEMP_CONTAINER_NAME"
-    
     # Execute the command and clean up afterward
     echo "Executing: ${CLAUDE_ARGS[*]}"
     if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
         # Interactive shell
-        docker exec -it "$TEMP_CONTAINER_NAME" bash
+        docker exec -it --user developer "$TEMP_CONTAINER_NAME" bash
         exit_code=$?
     else
         # Regular command
-        docker exec "$TEMP_CONTAINER_NAME" "${CLAUDE_ARGS[@]}"
+        docker exec --user developer "$TEMP_CONTAINER_NAME" "${CLAUDE_ARGS[@]}"
         exit_code=$?
     fi
     

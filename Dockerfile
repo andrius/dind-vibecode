@@ -41,9 +41,8 @@ ENV PATH="/opt/npm-global/bin:$PATH"
 # Install Claude Code via npm (correct package name)
 RUN npm install -g @anthropic-ai/claude-code
 
-# Set up npm directory for developer user
-RUN mkdir -p /home/developer/.npm-global && \
-    chown -R developer:developer /home/developer/.npm-global
+# Configure PATH for developer user
+RUN echo 'export PATH="/opt/npm-global/bin:$PATH"' >> /home/developer/.bashrc
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -51,6 +50,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Create working directory
 WORKDIR /workspace
+
+# Switch to developer user for all operations
+USER developer
 
 # Use custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

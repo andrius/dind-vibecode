@@ -17,7 +17,7 @@ trap cleanup SIGTERM SIGINT
 
 # Start Docker daemon in background with output redirected to reduce noise
 echo "Starting Docker daemon..."
-dockerd > /dev/null 2>&1 &
+sudo dockerd > /dev/null 2>&1 &
 DOCKERD_PID=$!
 
 # Wait for Docker daemon to be ready
@@ -39,21 +39,10 @@ fi
 
 echo "Container starting..."
 
-# Fix ownership of workspace if needed
-if [ -d /workspace ]; then
-    chown -R developer:developer /workspace
-fi
-
-# If arguments provided, execute them as developer user
+# If arguments provided, execute them
 if [ $# -gt 0 ]; then
     echo "Executing command: $*"
-    if [ "$1" = "bash" ] && [ $# -eq 1 ]; then
-        # Interactive bash - switch to developer user with proper home
-        exec su - developer -c "cd /workspace && bash"
-    else
-        # Other commands - execute as developer user in workspace
-        exec su - developer -c "cd /workspace && $(printf '%q ' "$@")"
-    fi
+    exec "$@"
 else
     # No arguments, keep container running
     echo "Container ready. Keeping alive..."
