@@ -17,7 +17,7 @@ PERSISTENT=false
 
 # Help function
 show_help() {
-    cat << EOF
+  cat <<EOF
 vibecode - Docker-in-Docker Claude Code Wrapper
 
 USAGE:
@@ -79,81 +79,81 @@ EOF
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --volume)
-            if [[ -z "$2" ]]; then
-                echo "Error: --volume requires an argument (SRC:DEST)" >&2
-                exit 1
-            fi
-            VOLUMES+=("$2")
-            shift 2
-            ;;
-        --session)
-            if [[ -z "$2" ]]; then
-                echo "Error: --session requires a name" >&2
-                exit 1
-            fi
-            SESSION_NAME="$2"
-            PERSISTENT=true
-            shift 2
-            ;;
-        --list)
-            LIST_SESSIONS=true
-            shift
-            ;;
-        --help|-h)
-            SHOW_HELP=true
-            shift
-            ;;
-        -*)
-            echo "Error: Unknown option $1" >&2
-            echo "Use 'vibecode --help' for usage information." >&2
-            exit 1
-            ;;
-        *)
-            # All remaining arguments go to Claude
-            CLAUDE_ARGS=("$@")
-            break
-            ;;
-    esac
+  case $1 in
+  --volume)
+    if [[ -z "$2" ]]; then
+      echo "Error: --volume requires an argument (SRC:DEST)" >&2
+      exit 1
+    fi
+    VOLUMES+=("$2")
+    shift 2
+    ;;
+  --session)
+    if [[ -z "$2" ]]; then
+      echo "Error: --session requires a name" >&2
+      exit 1
+    fi
+    SESSION_NAME="$2"
+    PERSISTENT=true
+    shift 2
+    ;;
+  --list)
+    LIST_SESSIONS=true
+    shift
+    ;;
+  --help | -h)
+    SHOW_HELP=true
+    shift
+    ;;
+  -*)
+    echo "Error: Unknown option $1" >&2
+    echo "Use 'vibecode --help' for usage information." >&2
+    exit 1
+    ;;
+  *)
+    # All remaining arguments go to Claude
+    CLAUDE_ARGS=("$@")
+    break
+    ;;
+  esac
 done
 
 # Show help if requested
 if [[ "$SHOW_HELP" == true ]]; then
-    show_help
-    exit 0
+  show_help
+  exit 0
 fi
 
 # List sessions if requested
 if [[ "$LIST_SESSIONS" == true ]]; then
-    echo "Running vibecode sessions:"
-    docker ps --filter "label=vibecode-session" --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}" 2>/dev/null || echo "No running sessions found"
-    exit 0
+  echo "Running vibecode sessions:"
+  docker ps --filter "label=vibecode-session" --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}" 2>/dev/null || echo "No running sessions found"
+  exit 0
 fi
 
 # Function to add Claude config volumes to Docker command
 add_claude_config_volumes() {
-    # Add Claude directory config if it exists
-    if [[ -d "$HOME/.claude" ]]; then
-        DOCKER_VOLUMES+=("-v" "$HOME/.claude:/home/developer/.claude")
-    fi
-    
-    # Add Claude JSON config if it exists
-    if [[ -f "$HOME/.claude.json" ]]; then
-        DOCKER_VOLUMES+=("-v" "$HOME/.claude.json:/home/developer/.claude.json")
-    fi
+  # Add Claude directory config if it exists
+  if [[ -d "$HOME/.claude" ]]; then
+    DOCKER_VOLUMES+=("-v" "$HOME/.claude:/home/developer/.claude")
+  fi
+
+  # Add Claude JSON config if it exists
+  if [[ -f "$HOME/.claude.json" ]]; then
+    DOCKER_VOLUMES+=("-v" "$HOME/.claude.json:/home/developer/.claude.json")
+  fi
 }
 
 # Set session name
 if [[ -z "$SESSION_NAME" ]]; then
-    SESSION_NAME="$DEFAULT_SESSION_NAME"
+  SESSION_NAME="$DEFAULT_SESSION_NAME"
 fi
 
 # Default to current directory if no volumes specified
 # Use ORIGINAL_PWD if set by wrapper script, otherwise use current pwd
 CURRENT_DIR="${ORIGINAL_PWD:-$(pwd)}"
 if [[ ${#VOLUMES[@]} -eq 0 ]]; then
-    VOLUMES=("$CURRENT_DIR:$CURRENT_DIR")
+  VOLUMES=("$CURRENT_DIR:$CURRENT_DIR")
 fi
 
 # Validate volume format and convert relative paths to absolute
@@ -162,51 +162,51 @@ DOCKER_VOLUMES=()
 # Add Claude config volumes
 add_claude_config_volumes
 for volume in "${VOLUMES[@]}"; do
-    if [[ ! "$volume" =~ ^[^:]+:[^:]+$ ]]; then
-        echo "Error: Invalid volume format '$volume'. Use SRC:DEST format." >&2
-        exit 1
-    fi
-    
-    src="${volume%%:*}"
-    dest="${volume##*:}"
-    
-    # Convert relative paths to absolute
-    if [[ "$src" != /* ]]; then
-        src="$(realpath "$src" 2>/dev/null || echo "$PWD/$src")"
-    fi
-    
-    # Validate source exists
-    if [[ ! -e "$src" ]]; then
-        echo "Error: Source path '$src' does not exist" >&2
-        exit 1
-    fi
-    
-    DOCKER_VOLUMES+=("-v" "$src:$dest")
+  if [[ ! "$volume" =~ ^[^:]+:[^:]+$ ]]; then
+    echo "Error: Invalid volume format '$volume'. Use SRC:DEST format." >&2
+    exit 1
+  fi
+
+  src="${volume%%:*}"
+  dest="${volume##*:}"
+
+  # Convert relative paths to absolute
+  if [[ "$src" != /* ]]; then
+    src="$(realpath "$src" 2>/dev/null || echo "$PWD/$src")"
+  fi
+
+  # Validate source exists
+  if [[ ! -e "$src" ]]; then
+    echo "Error: Source path '$src' does not exist" >&2
+    exit 1
+  fi
+
+  DOCKER_VOLUMES+=("-v" "$src:$dest")
 done
 
 # Check if Docker is available
-if ! command -v docker &> /dev/null; then
-    echo "Error: Docker is not installed or not in PATH" >&2
-    exit 1
+if ! command -v docker &>/dev/null; then
+  echo "Error: Docker is not installed or not in PATH" >&2
+  exit 1
 fi
 
 # Function to build image if needed
 ensure_image_exists() {
-    # Get host user's UID and GID
-    HOST_UID=$(id -u)
-    HOST_GID=$(id -g)
-    
-    # Create image tag with UID/GID to handle different users
-    IMAGE_TAG="${IMAGE_NAME}:${HOST_UID}-${HOST_GID}"
-    
-    if ! docker image inspect "$IMAGE_TAG" &>/dev/null; then
-        echo "Building vibecode image for user ${HOST_UID}:${HOST_GID}..."
-        cd "$SCRIPT_DIR"
-        docker build --build-arg USER_UID="$HOST_UID" --build-arg USER_GID="$HOST_GID" -t "$IMAGE_TAG" .
-    fi
-    
-    # Update IMAGE_NAME to use the tagged version
-    IMAGE_NAME="$IMAGE_TAG"
+  # Get host user's UID and GID
+  HOST_UID=$(id -u)
+  HOST_GID=$(id -g)
+
+  # Create image tag with UID/GID to handle different users
+  IMAGE_TAG="${IMAGE_NAME}:${HOST_UID}-${HOST_GID}"
+
+  if ! docker image inspect "$IMAGE_TAG" &>/dev/null; then
+    echo "Building vibecode image for user ${HOST_UID}:${HOST_GID}..."
+    cd "$SCRIPT_DIR"
+    docker build --build-arg USER_UID="$HOST_UID" --build-arg USER_GID="$HOST_GID" -t "$IMAGE_TAG" .
+  fi
+
+  # Update IMAGE_NAME to use the tagged version
+  IMAGE_NAME="$IMAGE_TAG"
 }
 
 # Build image if needed
@@ -214,105 +214,105 @@ ensure_image_exists
 
 # If no command provided, default to interactive shell with hint
 if [[ ${#CLAUDE_ARGS[@]} -eq 0 ]]; then
-    echo "Hint: Try 'vibecode claude --version', 'vibecode claude \"your question\"', or 'vibecode --help'"
-    echo "Starting interactive shell..."
-    CLAUDE_ARGS=("bash")
+  echo "Hint: Try 'vibecode claude \"your question\"', 'vibecode yolo' or 'vibecode --help'"
+  echo "Starting interactive shell..."
+  CLAUDE_ARGS=("bash")
 fi
 
 # Prepare Docker run command
 DOCKER_CMD=(
-    docker run
-    --privileged
-    --label "vibecode-session"
-    "${DOCKER_VOLUMES[@]}"
-    --workdir "$CURRENT_DIR"
+  docker run
+  --privileged
+  --label "vibecode-session"
+  "${DOCKER_VOLUMES[@]}"
+  --workdir "$CURRENT_DIR"
 )
 
 # Add session handling
 if [[ "$PERSISTENT" == true ]]; then
-    # Check if session already exists
-    if docker ps -a --filter "name=$SESSION_NAME" --format "{{.Names}}" | grep -q "^$SESSION_NAME$"; then
-        echo "Using existing session: $SESSION_NAME"
-        if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
-            # Interactive shell in existing container
-            docker exec -it --user developer "$SESSION_NAME" bash
-        else
-            # Execute command in existing container
-            docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
-        fi
-        exit 0
+  # Check if session already exists
+  if docker ps -a --filter "name=$SESSION_NAME" --format "{{.Names}}" | grep -q "^$SESSION_NAME$"; then
+    echo "Using existing session: $SESSION_NAME"
+    if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
+      # Interactive shell in existing container
+      docker exec -it --user developer "$SESSION_NAME" bash
     else
-        echo "Creating new persistent session: $SESSION_NAME"
-        
-        # Start container in background
-        docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-            --workdir "$CURRENT_DIR" --name "$SESSION_NAME" -d "$IMAGE_NAME" > /dev/null
-        
-        # Wait for container to be ready
-        echo "Waiting for container to be ready..."
-        retries=30
-        while [[ $retries -gt 0 ]]; do
-            if docker exec "$SESSION_NAME" echo "ready" &>/dev/null; then
-                echo "Container ready"
-                break
-            fi
-            sleep 1
-            ((retries--))
-        done
-        
-        if [[ $retries -eq 0 ]]; then
-            echo "Error: Container failed to become ready" >&2
-            docker rm -f "$SESSION_NAME" &>/dev/null
-            exit 1
-        fi
-        
-        # Execute command in the new persistent container
-        if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
-            docker exec -it --user developer "$SESSION_NAME" bash
-        else
-            docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
-        fi
-        exit 0
+      # Execute command in existing container
+      docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
     fi
-else
-    # Temporary container approach - start in background, copy config, then exec
-    TEMP_CONTAINER_NAME="vibecode-temp-$$"
-    
-    echo "Starting temporary container..."
+    exit 0
+  else
+    echo "Creating new persistent session: $SESSION_NAME"
+
     # Start container in background
     docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
-        --workdir "$CURRENT_DIR" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" > /dev/null
-    
+      --workdir "$CURRENT_DIR" --name "$SESSION_NAME" -d "$IMAGE_NAME" >/dev/null
+
     # Wait for container to be ready
     echo "Waiting for container to be ready..."
     retries=30
     while [[ $retries -gt 0 ]]; do
-        if docker exec "$TEMP_CONTAINER_NAME" echo "ready" &>/dev/null; then
-            break
-        fi
-        sleep 1
-        ((retries--))
+      if docker exec "$SESSION_NAME" echo "ready" &>/dev/null; then
+        echo "Container ready"
+        break
+      fi
+      sleep 1
+      ((retries--))
     done
-    
+
     if [[ $retries -eq 0 ]]; then
-        echo "Error: Container failed to become ready" >&2
-        docker rm -f "$TEMP_CONTAINER_NAME" &>/dev/null
-        exit 1
+      echo "Error: Container failed to become ready" >&2
+      docker rm -f "$SESSION_NAME" &>/dev/null
+      exit 1
     fi
-    
-    # Execute the command and clean up afterward
-    echo "Executing: ${CLAUDE_ARGS[*]}"
+
+    # Execute command in the new persistent container
     if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
-        # Interactive shell
-        docker exec -it --user developer "$TEMP_CONTAINER_NAME" bash
-        exit_code=$?
+      docker exec -it --user developer "$SESSION_NAME" bash
     else
-        # Regular command
-        docker exec --user developer "$TEMP_CONTAINER_NAME" "${CLAUDE_ARGS[@]}"
-        exit_code=$?
+      docker exec --user developer "$SESSION_NAME" "${CLAUDE_ARGS[@]}"
     fi
-    
-    # Clean up temporary container
+    exit 0
+  fi
+else
+  # Temporary container approach - start in background, copy config, then exec
+  TEMP_CONTAINER_NAME="vibecode-temp-$$"
+
+  echo "Starting temporary container..."
+  # Start container in background
+  docker run --privileged --label "vibecode-session" "${DOCKER_VOLUMES[@]}" \
+    --workdir "$CURRENT_DIR" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" >/dev/null
+
+  # Wait for container to be ready
+  echo "Waiting for container to be ready..."
+  retries=30
+  while [[ $retries -gt 0 ]]; do
+    if docker exec "$TEMP_CONTAINER_NAME" echo "ready" &>/dev/null; then
+      break
+    fi
+    sleep 1
+    ((retries--))
+  done
+
+  if [[ $retries -eq 0 ]]; then
+    echo "Error: Container failed to become ready" >&2
     docker rm -f "$TEMP_CONTAINER_NAME" &>/dev/null
-    exit $exit_code
+    exit 1
+  fi
+
+  # Execute the command and clean up afterward
+  echo "Executing: ${CLAUDE_ARGS[*]}"
+  if [[ "${CLAUDE_ARGS[0]}" == "bash" && ${#CLAUDE_ARGS[@]} -eq 1 ]]; then
+    # Interactive shell
+    docker exec -it --user developer "$TEMP_CONTAINER_NAME" bash
+    exit_code=$?
+  else
+    # Regular command
+    docker exec --user developer "$TEMP_CONTAINER_NAME" "${CLAUDE_ARGS[@]}"
+    exit_code=$?
+  fi
+
+  # Clean up temporary container
+  docker rm -f "$TEMP_CONTAINER_NAME" &>/dev/null
+  exit $exit_code
 fi

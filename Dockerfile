@@ -42,11 +42,16 @@ ENV PATH="/opt/npm-global/bin:$PATH"
 RUN npm install -g @anthropic-ai/claude-code
 
 # Configure PATH for developer user
-RUN echo 'export PATH="/opt/npm-global/bin:$PATH"' >> /home/developer/.bashrc
+RUN echo 'export PATH="/home/developer/.local/bin:/opt/npm-global/bin:$PATH"' >> /home/developer/.bashrc
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Copy bin directory to developer's local bin
+COPY bin/ /home/developer/.local/bin/
+RUN chown -R developer:developer /home/developer/.local/bin && \
+    chmod +x /home/developer/.local/bin/*
 
 # Switch to developer user for all operations
 USER developer

@@ -92,8 +92,22 @@ update_existing() {
     
     # Force rebuild containers by removing any cached images
     print_info "Cleaning up old container images to force rebuild"
-    docker image prune -f --filter="label=vibecode" >/dev/null 2>&1 || true
-    docker rmi vibecode-dev >/dev/null 2>&1 || true
+    # Remove images with vibecode prefix (handles all UID-GID variants)
+    docker images --format "{{.Repository}}:{{.Tag}}" | grep "^vibecode:" | xargs -r docker rmi >/dev/null 2>&1 || true
+    docker image prune -f >/dev/null 2>&1 || true
+    
+    # Rebuild Docker image with current user's UID/GID
+    print_info "Rebuilding Docker image with current user permissions"
+    USER_UID=$(id -u)
+    USER_GID=$(id -g)
+    IMAGE_TAG="vibecode:${USER_UID}-${USER_GID}"
+    
+    if docker build --build-arg USER_UID="$USER_UID" --build-arg USER_GID="$USER_GID" -t "$IMAGE_TAG" . >/dev/null 2>&1; then
+        print_success "Docker image rebuilt successfully: $IMAGE_TAG"
+    else
+        print_error "Failed to rebuild Docker image"
+        print_error "You may need to rebuild it manually on next use"
+    fi
     
     print_success "Installation updated successfully"
 }
