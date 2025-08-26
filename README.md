@@ -1,4 +1,4 @@
-# Docker-in-Docker Claude Development Environment
+# Docker-in-Docker Vibecoding Environment
 
 A containerized development environment with a convenient wrapper script that provides Docker-in-Docker capabilities, Claude Code, and multiple development tools. Supports parallel sessions and flexible volume mounting.
 
@@ -21,7 +21,7 @@ The container provides a complete development environment where Claude Code can 
 - **Vibecode Wrapper**: Simple command-line interface for container management
 - **Parallel Sessions**: Run multiple isolated development environments simultaneously
 - **Docker-in-Docker**: Full Docker CE with compose plugin for nested containerization
-- **Claude Code**: Pre-installed and configured for AI-assisted development
+- **Complete AI Development Toolkit**: Pre-installed Claude Code, Qwen Code, Gemini CLI, Crush, OpenCode, and LLM CLI
 - **Multi-language Support**: Python 3.13 and Node.js 22
 - **Flexible Volume Mounting**: Mount any host directory into containers
 - **Session Management**: Persistent named sessions or temporary auto-cleanup containers
@@ -33,7 +33,7 @@ The container provides a complete development environment where Claude Code can 
 Install vibecode globally with a single command:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andrius/dind-vibecode/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andrius/vibecode/main/install.sh | bash
 ```
 
 This will:
@@ -65,23 +65,31 @@ cd dind-vibecode
 ### Usage Examples
 
 ```bash
-# Run Claude Code (current directory mounted automatically)
-vibecode claude "what is this project about"
+# Use different AI assistants (note: each has different syntax)
+vibecode claude "what is this project about"                    # Claude Code - direct args
+vibecode qwen --prompt "optimize this algorithm"                # Qwen Code - requires --prompt
+vibecode gemini --prompt "explain this design pattern"          # Gemini CLI - requires --prompt
+vibecode opencode --prompt "refactor this function"             # OpenCode - requires --prompt
+vibecode crush run "implement user authentication"              # Crush - requires 'run' subcommand
+vibecode llm "summarize this codebase"                         # LLM CLI - direct args
 
-# Check Claude version
+# Check versions of AI tools
 vibecode claude --version
+vibecode qwen --version
+vibecode gemini --version
 
-# Interactive shell
+# Interactive shell with full AI toolkit
 vibecode bash
 
-# Mount real project directory
-vibecode --volume /home/ak/code/some/backend:/workspace claude analyze
+# Mount real project directory (preserves full paths, not /workspace)
+vibecode --volume /home/ak/code/some/backend:/home/ak/code/some/backend claude "analyze this backend"
 
 # Use persistent named session for a project
 vibecode --session myproject claude "analyze this project"
 
-# Continue working in the same session later
-vibecode --session myproject claude "implement the suggested changes"
+# Continue working in the same session later with different AI tools
+vibecode --session myproject qwen --prompt "optimize the database queries"
+vibecode --session myproject gemini --prompt "suggest security improvements"
 
 # List running sessions
 vibecode --list
@@ -89,7 +97,7 @@ vibecode --list
 
 ## YOLO Mode Setup & Usage
 
-For safe AI-assisted development without confirmations, you can run Claude Code in YOLO mode within the isolated container:
+For safe AI-assisted development without confirmations, you can run any of the AI development tools in YOLO mode within the isolated container:
 
 ### One-time Setup
 
@@ -103,8 +111,11 @@ vibecode claude --dangerously-skip-permissions
 ### YOLO Mode Examples
 
 ```bash
-# Basic YOLO mode - let AI make changes without confirmations
+# Basic YOLO mode with different AI tools - let AI make changes without confirmations
 vibecode claude --print "refactor this entire codebase" --dangerously-skip-permissions --verbose
+vibecode qwen --prompt "optimize all algorithms in this project" --dangerously-skip-permissions
+vibecode gemini --prompt "add comprehensive error handling" --dangerously-skip-permissions
+vibecode crush run "implement microservices architecture" --dangerously-skip-permissions
 
 # YOLO mode with specific project
 vibecode --volume /home/ak/code/some/backend:/home/ak/code/some/backend claude --print "fix all bugs and optimize performance" --dangerously-skip-permissions
@@ -112,12 +123,15 @@ vibecode --volume /home/ak/code/some/backend:/home/ak/code/some/backend claude -
 # Continuous YOLO session with JSON output
 vibecode claude --continue --print "implement new features" --dangerously-skip-permissions --verbose --output-format stream-json | jq
 
-# YOLO mode in persistent session
+# YOLO mode in persistent session with different AI tools
 vibecode --session danger-zone claude --print "completely restructure this project" --dangerously-skip-permissions
+vibecode --session danger-zone opencode --prompt "add comprehensive testing" --dangerously-skip-permissions
+vibecode --session danger-zone llm "document all functions and classes" --dangerously-skip-permissions
 
 # YOLO with development environment pre-installed
 vibecode --session backend-dev bash
 vibecode --session backend-dev claude --print "build a complete Go REST API with PostgreSQL" --dangerously-skip-permissions
+vibecode --session backend-dev crush run "add authentication and authorization" --dangerously-skip-permissions
 ```
 
 ### Why YOLO Mode in Containers?
@@ -194,14 +208,44 @@ docker rm -f $(docker ps -aq --filter "label=vibecode-session")
 
 ## Available Tools
 
-- Claude Code (v1.0.89+)
-- Python 3.13.7
+### AI Development Tools (Pre-installed in User Space)
+
+All AI tools support self-upgrade and are owned by the developer user:
+
+- **Claude Code** v1.0.92+ - Anthropic's official CLI (`@anthropic-ai/claude-code`)
+- **Qwen Code** v0.0.8+ - Alibaba's AI coding assistant (`@qwen-code/qwen-code`)
+- **Gemini CLI** v0.1.22+ - Google's Gemini API interface (`@google/gemini-cli`)
+- **Crush** v0.7.1+ - AI-powered development tool (`@charmland/crush`)
+- **OpenCode** v0.5.27+ - Open-source AI coding assistant (`opencode-ai`)
+- **LLM CLI** v0.27.1+ - Universal LLM interface with Anthropic & Gemini plugins
+
+### Core Development Stack
+
+- Python 3.13 with pip
 - Docker 28.3.3+ with Compose
-- Node.js 22.18.0 LTS
+- Node.js 22.18.0 LTS with npm
 - **Passwordless Sudo**: Install additional packages without prompts
 - **Pre-built Development Tools**: Via `install-dev-tools.sh` script
 
-### Package Installation
+### Package Installation & AI Tool Management
+
+#### AI Tool Self-Upgrade
+
+All AI tools are installed in user space and can self-upgrade:
+
+```bash
+# Upgrade AI development tools
+vibecode bash
+claude upgrade                                    # Claude Code self-upgrade
+npm update -g @anthropic-ai/claude-code          # Manual npm update
+npm update -g @qwen-code/qwen-code               # Update Qwen Code
+npm update -g @google/gemini-cli                 # Update Gemini CLI
+npm update -g @charmland/crush                   # Update Crush
+npm update -g opencode-ai                        # Update OpenCode
+pip install --user --upgrade llm llm-anthropic llm-gemini  # Update LLM CLI
+```
+
+#### System Package Installation
 
 The container's `developer` user has full sudo access without password prompts, enabling installation of additional tools:
 
@@ -239,4 +283,3 @@ The script automatically configures environment variables (`GOROOT`, `GOPATH`) a
 - Runs in privileged mode (required for Docker-in-Docker)
 - Mounts Docker socket for host Docker access
 - Claude configuration mounted for authentication
-

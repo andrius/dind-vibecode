@@ -32,21 +32,16 @@ RUN groupadd -g $USER_GID developer && \
     usermod -aG docker developer && \
     echo "developer ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Configure npm for global packages as root first
-RUN mkdir -p /opt/npm-global && \
-    npm config set prefix '/opt/npm-global' && \
-    chmod -R 755 /opt/npm-global
-ENV PATH="/opt/npm-global/bin:$PATH"
-
-# Install Claude Code via npm (correct package name)
-RUN npm install -g @anthropic-ai/claude-code
-
 # Configure PATH for developer user
-RUN echo 'export PATH="/home/developer/.local/bin:/opt/npm-global/bin:$PATH"' >> /home/developer/.bashrc
+RUN echo 'export PATH="/home/developer/.local/bin:$PATH"' >> /home/developer/.bashrc
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Create and configure .local directory structure for developer user
+RUN mkdir -p /home/developer/.local/bin /home/developer/.local/lib && \
+    chown -R developer:developer /home/developer/.local
 
 # Copy bin directory to developer's local bin
 COPY bin/ /home/developer/.local/bin/
@@ -55,6 +50,24 @@ RUN chown -R developer:developer /home/developer/.local/bin && \
 
 # Switch to developer user for all operations
 USER developer
+
+# Configure npm for developer user to install in local space
+RUN npm config set prefix '/home/developer/.local'
+
+# Install Claude Code as developer user
+RUN npm install -g @anthropic-ai/claude-code
+
+# Install additional vibecoding tools as developer user
+RUN npm install -g @qwen-code/qwen-code && \
+    npm install -g @google/gemini-cli && \
+    npm install -g @charmland/crush && \
+    npm install -g opencode-ai
+
+# Install Python-based vibecoding tools as developer user
+RUN pip install --user llm llm-anthropic llm-gemini
+
+# Set PATH environment variable so all tools are accessible in all shells
+ENV PATH="/home/developer/.local/bin:${PATH}"
 
 # Use custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
