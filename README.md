@@ -181,10 +181,10 @@ The `vibecode` script provides an easy interface to run containerized developmen
 
 **Session Management:**
 
-- Each `vibecode` command creates a persistent container by default
-- `vibecode --session name` - Create/reuse a named session for a specific project
-- `vibecode --list` - List all running sessions
-- Sessions persist until manually removed - great for ongoing work
+- `vibecode --session name` - Persistent sessions (manual cleanup)
+- Without `--session` - Temporary containers (auto-cleanup)
+- `vibecode --list` - List sessions
+- `vibecode --cleanup` - Remove orphaned containers
 
 **Volume Mounting:**
 
@@ -195,24 +195,16 @@ The `vibecode` script provides an easy interface to run containerized developmen
 
 ## Session Cleanup
 
-Since containers are persistent, you'll want to clean them up occasionally:
-
 ```bash
-# List all running vibecode sessions
+# List persistent sessions
 vibecode --list
 
-# Remove a specific session
+# Clean orphaned containers
+vibecode --cleanup
+
+# Remove specific session
 docker rm -f session-name
-
-# Remove all vibecode sessions (clean slate)
-docker rm -f $(docker ps -aq --filter "label=vibecode-session")
 ```
-
-**When to clean up:**
-
-- When you're done with a project
-- Running low on disk space
-- Too many containers running
 
 ## Architecture
 

@@ -18,6 +18,7 @@ SHOW_HELP=false
 SESSION_NAME=""
 LIST_SESSIONS=false
 PERSISTENT=false
+CLEANUP_ORPHANED=false
 
 show_help() {
   cat <<EOF
@@ -30,6 +31,7 @@ OPTIONS:
     --volume SRC:DEST    Mount host directory SRC to container path DEST (optional)
     --session NAME       Use persistent named session (optional)
     --list              List running sessions
+    --cleanup           Clean up orphaned temporary containers
     --help, -h          Show this help message
 
 EXAMPLES:
@@ -111,6 +113,10 @@ while [[ $# -gt 0 ]]; do
     LIST_SESSIONS=true
     shift
     ;;
+  --cleanup)
+    CLEANUP_ORPHANED=true
+    shift
+    ;;
   --help | -h)
     SHOW_HELP=true
     shift
@@ -134,7 +140,28 @@ fi
 
 if [[ "$LIST_SESSIONS" == true ]]; then
   echo "Running vibecode sessions:"
-  docker ps --filter "label=vibecode-session" --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}" 2>/dev/null || echo "No running sessions found"
+  docker ps --filter "label=vibecode-session=persistent" --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}" 2>/dev/null || echo "No running sessions found"
+  
+  # Also show any orphaned temporary containers
+  orphaned=$(docker ps -q --filter "label=vibecode-session=temporary" 2>/dev/null)
+  if [[ -n "$orphaned" ]]; then
+    echo ""
+    echo "WARNING: Found orphaned temporary containers:"
+    docker ps --filter "label=vibecode-session=temporary" --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}"
+    echo "Run 'vibecode --cleanup' to remove them."
+  fi
+  exit 0
+fi
+
+if [[ "$CLEANUP_ORPHANED" == true ]]; then
+  echo "Cleaning up orphaned temporary containers..."
+  orphaned=$(docker ps -aq --filter "label=vibecode-session=temporary" 2>/dev/null)
+  if [[ -n "$orphaned" ]]; then
+    echo "$orphaned" | xargs docker rm -f
+    echo "Cleanup complete."
+  else
+    echo "No orphaned containers found."
+  fi
   exit 0
 fi
 
@@ -256,7 +283,7 @@ if [[ "$PERSISTENT" == true ]]; then
       IFS='|' read -ra VOLUME_ARRAY <<< "$DOCKER_VOLUMES"
       VOLUME_ARGS="${VOLUME_ARRAY[*]}"
     fi
-    docker run --privileged --label "vibecode-session" $VOLUME_ARGS \
+    docker run --privileged --label "vibecode-session=persistent" $VOLUME_ARGS \
       --workdir "$CURRENT_DIR" --name "$SESSION_NAME" -d "$IMAGE_NAME" >/dev/null
 
     echo "Waiting for container to be ready..."
@@ -286,13 +313,21 @@ if [[ "$PERSISTENT" == true ]]; then
 else
   TEMP_CONTAINER_NAME="vibecode-temp-$$"
 
+  # Set up cleanup trap for temporary containers
+  cleanup_temp_container() {
+    if docker ps -a --filter "name=$TEMP_CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$TEMP_CONTAINER_NAME$"; then
+      docker rm -f "$TEMP_CONTAINER_NAME" &>/dev/null
+    fi
+  }
+  trap cleanup_temp_container EXIT INT TERM
+
   echo "Starting temporary container..."
   VOLUME_ARGS=""
   if [[ -n "$DOCKER_VOLUMES" ]]; then
     IFS='|' read -ra VOLUME_ARRAY <<< "$DOCKER_VOLUMES"
     VOLUME_ARGS="${VOLUME_ARRAY[*]}"
   fi
-  docker run --privileged --label "vibecode-session" $VOLUME_ARGS \
+  docker run --privileged --label "vibecode-session=temporary" $VOLUME_ARGS \
     --workdir "$CURRENT_DIR" --name "$TEMP_CONTAINER_NAME" -d "$IMAGE_NAME" >/dev/null
 
   echo "Waiting for container to be ready..."
