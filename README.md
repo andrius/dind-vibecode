@@ -1,6 +1,6 @@
 # Docker-in-Docker Vibecoding Environment
 
-A containerized development environment with a convenient wrapper script that provides Docker-in-Docker capabilities, Claude Code, and multiple development tools. Supports parallel sessions and flexible volume mounting.
+A cross-platform containerized development environment with a convenient wrapper script that provides Docker-in-Docker capabilities, Claude Code, and multiple development tools. **Supports both macOS and Linux** with automatic platform detection and Docker dependency management.
 
 ## Purpose & Motivation
 
@@ -18,6 +18,7 @@ The container provides a complete development environment where Claude Code can 
 
 ## Features
 
+- **Cross-Platform Support**: Works on both macOS and Linux with automatic platform detection
 - **Vibecode Wrapper**: Simple command-line interface for container management
 - **Parallel Sessions**: Run multiple isolated development environments simultaneously
 - **Docker-in-Docker**: Full Docker CE with compose plugin for nested containerization
@@ -25,6 +26,7 @@ The container provides a complete development environment where Claude Code can 
 - **Multi-language Support**: Python 3.13 and Node.js 22
 - **Flexible Volume Mounting**: Mount any host directory into containers
 - **Session Management**: Persistent named sessions or temporary auto-cleanup containers
+- **Smart Error Handling**: Platform-specific error messages and installation guidance
 
 ## Installation
 
@@ -57,8 +59,23 @@ cd dind-vibecode
 
 ### Prerequisites
 
-- Docker installed on host
-- Claude Code authentication configured in `~/.claude` or `~/.claude.json`
+**Required Dependencies:**
+
+- **Docker**: Docker Engine (Linux) or Docker Desktop (macOS)
+- **Claude Code Authentication**: Configured in `~/.claude` or `~/.claude.json`
+
+**Platform-Specific Setup:**
+
+**Linux:**
+
+- Docker Engine with Docker Compose plugin
+
+**macOS:**
+
+- Docker Desktop for Mac (required for privileged containers)
+- Ensure file sharing is enabled in Docker Desktop preferences
+
+The vibecode script automatically detects your platform and provides platform-specific error messages and guidance.
 
 ## Quick Start
 
